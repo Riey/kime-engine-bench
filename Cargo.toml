@@ -5,7 +5,8 @@ authors = ["Riey <creeper844@gmail.com>"]
 edition = "2018"
 links = "hangul"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+check = []
 
 [dependencies]
 kime-engine-cffi = { git = "https://github.com/Riey/kime", branch = "develop" }

@@ -68,12 +68,13 @@ unsafe fn test_libhangul(hic: *mut HangulInputContext, set: &TestSet) {
 
         let preedit_s = hangul_ic_get_preedit_string(hic);
 
-        if preedit_s.is_null() {
-            assert_eq!(*preedit, '\0');
-        } else {
-            assert_eq!(*preedit as u32, preedit_s.read())
+        if cfg!(features = "check") {
+            if preedit_s.is_null() {
+                assert_eq!(*preedit, '\0');
+            } else {
+                assert_eq!(*preedit as u32, preedit_s.read())
+            }
         }
-
         if !retval {
             let s = hangul_ic_flush(hic);
             append_c_str(&mut commit, s);
@@ -81,7 +82,9 @@ unsafe fn test_libhangul(hic: *mut HangulInputContext, set: &TestSet) {
     }
 
     append_c_str(&mut commit, hangul_ic_flush(hic));
-    assert_eq!(commit, set.commit);
+    if cfg!(features = "check") {
+        assert_eq!(commit, set.commit);
+    }
 }
 
 fn test_kime_engine(engine: &mut InputEngine, config: &Config, set: &TestSet) {
@@ -117,7 +120,10 @@ fn test_kime_engine(engine: &mut InputEngine, config: &Config, set: &TestSet) {
                 commit.push(ret.char2);
             }
         }
-        assert_eq!(ret_preedit, *preedit);
+
+        if cfg!(feature = "check") {
+            assert_eq!(ret_preedit, *preedit);
+        }
     }
 
     let reset = engine.reset();
@@ -125,7 +131,9 @@ fn test_kime_engine(engine: &mut InputEngine, config: &Config, set: &TestSet) {
         commit.push(reset);
     }
 
-    assert_eq!(commit, set.commit);
+    if cfg!(feature = "check") {
+        assert_eq!(commit, set.commit);
+    }
 }
 
 fn libhangul(c: &mut Criterion) {
