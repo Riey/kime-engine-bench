@@ -29,6 +29,7 @@ impl KeyCode {
     }
 }
 
+#[derive(Clone, Copy)]
 struct TestKey {
     code: KeyCode,
     preedit: char,
@@ -136,17 +137,39 @@ fn test_kime_engine(engine: &mut InputEngine, config: &Config, set: &TestSet) {
     }
 }
 
-fn libhangul(c: &mut Criterion) {
-    let set = TestSet {
-        keys: vec![
+fn get_testset(count: usize) -> TestSet {
+    TestSet {
+        keys: [
             TestKey::new(KeyCode::A, 'ㅁ'),
             TestKey::new(KeyCode::K, '마'),
             TestKey::new(KeyCode::S, '만'),
-        ],
-        commit: "만".into(),
-    };
+        ]
+        .repeat(count),
+        commit: "만".repeat(count),
+    }
+}
 
-    c.bench_function("libhangul_keycode_commit", |b| {
+fn libhangul(c: &mut Criterion) {
+    c.bench_function("libhangul_keycode_commit_5", |b| {
+        let set = get_testset(5);
+        b.iter(|| unsafe {
+            let hic = hangul_ic_new(cs!("2"));
+            test_libhangul(hic, &set);
+            hangul_ic_delete(hic);
+        });
+    });
+
+    c.bench_function("libhangul_keycode_commit_50", |b| {
+        let set = get_testset(50);
+        b.iter(|| unsafe {
+            let hic = hangul_ic_new(cs!("2"));
+            test_libhangul(hic, &set);
+            hangul_ic_delete(hic);
+        });
+    });
+
+    c.bench_function("libhangul_keycode_commit_500", |b| {
+        let set = get_testset(500);
         b.iter(|| unsafe {
             let hic = hangul_ic_new(cs!("2"));
             test_libhangul(hic, &set);
@@ -156,18 +179,26 @@ fn libhangul(c: &mut Criterion) {
 }
 
 fn kime_engine(c: &mut Criterion) {
-    let set = TestSet {
-        keys: vec![
-            TestKey::new(KeyCode::A, 'ㅁ'),
-            TestKey::new(KeyCode::K, '마'),
-            TestKey::new(KeyCode::S, '만'),
-        ],
-        commit: "만".into(),
-    };
-
     let config = Config::default();
 
-    c.bench_function("kime_engine_keycode_commit", |b| {
+    c.bench_function("kime_engine_keycode_commit_5", |b| {
+        let set = get_testset(5);
+        b.iter(|| {
+            let mut engine = InputEngine::new();
+            test_kime_engine(&mut engine, &config, &set);
+        });
+    });
+
+    c.bench_function("kime_engine_keycode_commit_50", |b| {
+        let set = get_testset(50);
+        b.iter(|| {
+            let mut engine = InputEngine::new();
+            test_kime_engine(&mut engine, &config, &set);
+        });
+    });
+
+    c.bench_function("kime_engine_keycode_commit_500", |b| {
+        let set = get_testset(500);
         b.iter(|| {
             let mut engine = InputEngine::new();
             test_kime_engine(&mut engine, &config, &set);
