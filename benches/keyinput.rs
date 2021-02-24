@@ -32,12 +32,19 @@ impl KeyCode {
 #[derive(Clone, Copy)]
 struct TestKey {
     code: KeyCode,
+    #[cfg(features = "check")]
     preedit: &'static str,
 }
 
 impl TestKey {
+    #[allow(unused_variables)]
     pub const fn new(code: KeyCode, preedit: &'static str) -> Self {
-        Self { code, preedit }
+        #[cfg(features = "check")] {
+            Self { code, preedit }
+        }
+        #[cfg(not(features = "check"))] {
+            Self { code }
+        }
     }
 }
 
@@ -62,19 +69,20 @@ unsafe fn append_c_str(out: &mut String, mut s: *const u32) {
 
 unsafe fn test_libhangul(hic: *mut HangulInputContext, set: &TestSet) {
     let mut commit = String::with_capacity(set.commit.len());
+    #[cfg(features = "check")]
     let mut preedit_buf = String::with_capacity(64);
 
-    for TestKey { code, preedit } in set.keys.iter() {
-        let ch = code.to_char();
+    for key in set.keys.iter() {
+        let ch = key.code.to_char();
         let retval = hangul_ic_process(hic, ch as u32 as _);
 
-        if cfg!(features = "check") {
+        #[cfg(features = "check")] {
             let preedit_s = hangul_ic_get_preedit_string(hic);
             if preedit_s.is_null() {
-                assert!(preedit.is_empty());
+                assert!(key.preedit.is_empty());
             } else {
                 append_c_str(&mut preedit_buf, preedit_s);
-                assert_eq!(*preedit, preedit_buf);
+                assert_eq!(*key.preedit, preedit_buf);
             }
         }
 
@@ -95,10 +103,10 @@ fn test_kime_engine(engine: &mut InputEngine, config: &Config, set: &TestSet) {
     let mut commit = String::with_capacity(set.commit.len());
     engine.set_hangul_enable(true);
 
-    for TestKey { code, preedit } in set.keys.iter() {
-        let ret = engine.press_key(config, code.to_keycode(), 0);
+    for key in set.keys.iter() {
+        let ret = engine.press_key(config, key.code.to_keycode(), 0);
 
-        if cfg!(feature = "check") {
+        #[cfg(features = "check")] {
             if ret & InputResult_HAS_PREEDIT != 0 {
                 assert_eq!(*preedit, engine.preedit_str());
             } else {
@@ -117,7 +125,7 @@ fn test_kime_engine(engine: &mut InputEngine, config: &Config, set: &TestSet) {
         }
 
         if ret & InputResult_CONSUMED == 0 {
-            commit.push(code.to_char());
+            commit.push(key.code.to_char());
         }
     }
 
