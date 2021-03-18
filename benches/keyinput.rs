@@ -39,10 +39,12 @@ struct TestKey {
 impl TestKey {
     #[allow(unused_variables)]
     pub const fn new(code: KeyCode, preedit: &'static str) -> Self {
-        #[cfg(features = "check")] {
+        #[cfg(features = "check")]
+        {
             Self { code, preedit }
         }
-        #[cfg(not(features = "check"))] {
+        #[cfg(not(features = "check"))]
+        {
             Self { code }
         }
     }
@@ -76,7 +78,8 @@ unsafe fn test_libhangul(hic: *mut HangulInputContext, set: &TestSet) {
         let ch = key.code.to_char();
         let retval = hangul_ic_process(hic, ch as u32 as _);
 
-        #[cfg(features = "check")] {
+        #[cfg(features = "check")]
+        {
             let preedit_s = hangul_ic_get_preedit_string(hic);
             if preedit_s.is_null() {
                 assert!(key.preedit.is_empty());
@@ -100,40 +103,28 @@ unsafe fn test_libhangul(hic: *mut HangulInputContext, set: &TestSet) {
 }
 
 fn test_kime_engine(engine: &mut InputEngine, config: &Config, set: &TestSet) {
-    let mut commit = String::with_capacity(set.commit.len());
-    engine.set_hangul_enable(true);
+    engine.set_input_category(InputCategory::Hangul);
 
     for key in set.keys.iter() {
+        #[allow(unused_variables)]
         let ret = engine.press_key(config, key.code.to_keycode(), 0);
 
-        #[cfg(features = "check")] {
+        #[cfg(features = "check")]
+        {
             if ret & InputResult_HAS_PREEDIT != 0 {
                 assert_eq!(*preedit, engine.preedit_str());
             } else {
                 assert!(preedit.is_empty());
             }
-        }
 
-        if ret & (InputResult_NEED_FLUSH | InputResult_NEED_RESET) != 0 {
-            commit.push_str(engine.commit_str());
-
-            if ret & InputResult_NEED_RESET != 0 {
-                engine.reset();
-            } else {
-                engine.flush();
-            }
-        }
-
-        if ret & InputResult_CONSUMED == 0 {
-            commit.push(key.code.to_char());
+            assert_ne!(ret & InputResult_CONSUMED, 0);
         }
     }
 
     engine.clear_preedit();
-    commit.push_str(engine.commit_str());
 
     if cfg!(feature = "check") {
-        assert_eq!(commit, set.commit);
+        assert_eq!(engine.commit_str(), set.commit);
     }
 }
 
@@ -152,28 +143,28 @@ fn get_testset(count: usize) -> TestSet {
 fn libhangul(c: &mut Criterion) {
     c.bench_function("libhangul_keycode_commit_5", |b| {
         let set = get_testset(5);
+        let hic = unsafe { hangul_ic_new(cs!("2")) };
         b.iter(|| unsafe {
-            let hic = hangul_ic_new(cs!("2"));
             test_libhangul(hic, &set);
-            hangul_ic_delete(hic);
+            hangul_ic_reset(hic);
         });
     });
 
     c.bench_function("libhangul_keycode_commit_50", |b| {
         let set = get_testset(50);
+        let hic = unsafe { hangul_ic_new(cs!("2")) };
         b.iter(|| unsafe {
-            let hic = hangul_ic_new(cs!("2"));
             test_libhangul(hic, &set);
-            hangul_ic_delete(hic);
+            hangul_ic_reset(hic);
         });
     });
 
     c.bench_function("libhangul_keycode_commit_500", |b| {
         let set = get_testset(500);
+        let hic = unsafe { hangul_ic_new(cs!("2")) };
         b.iter(|| unsafe {
-            let hic = hangul_ic_new(cs!("2"));
             test_libhangul(hic, &set);
-            hangul_ic_delete(hic);
+            hangul_ic_reset(hic);
         });
     });
 }
@@ -183,25 +174,28 @@ fn kime_engine(c: &mut Criterion) {
 
     c.bench_function("kime_engine_keycode_commit_5", |b| {
         let set = get_testset(5);
+        let mut engine = InputEngine::new(&config);
         b.iter(|| {
-            let mut engine = InputEngine::new(&config);
             test_kime_engine(&mut engine, &config, &set);
+            engine.reset();
         });
     });
 
     c.bench_function("kime_engine_keycode_commit_50", |b| {
         let set = get_testset(50);
+        let mut engine = InputEngine::new(&config);
         b.iter(|| {
-            let mut engine = InputEngine::new(&config);
             test_kime_engine(&mut engine, &config, &set);
+            engine.reset();
         });
     });
 
     c.bench_function("kime_engine_keycode_commit_500", |b| {
         let set = get_testset(500);
+        let mut engine = InputEngine::new(&config);
         b.iter(|| {
-            let mut engine = InputEngine::new(&config);
             test_kime_engine(&mut engine, &config, &set);
+            engine.reset();
         });
     });
 }

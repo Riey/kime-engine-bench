@@ -7,4 +7,4 @@ pub use hangul::{
     hangul_ic_new, hangul_ic_process, hangul_ic_reset, HangulInputContext,
 };
 
-pub use kime_engine_cffi::{Config, InputEngine, InputResult, InputResult_CONSUMED, InputResult_HAS_PREEDIT, InputResult_LANGUAGE_CHANGED, InputResult_NEED_FLUSH, InputResult_NEED_RESET};
+pub use kime_engine_cffi::{Config, InputCategory, InputEngine, InputResult, InputResult_CONSUMED, InputResult_HAS_PREEDIT, InputResult_LANGUAGE_CHANGED, InputResult_HAS_COMMIT};
