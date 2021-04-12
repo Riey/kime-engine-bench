@@ -3,16 +3,13 @@ name = "kime-engine-bench"
 version = "0.1.0"
 authors = ["Riey <creeper844@gmail.com>"]
 edition = "2018"
-links = "hangul"
 
 [features]
 check = []
 
 [dependencies]
-kime-engine-cffi = { git = "https://github.com/Riey/kime", branch = "develop" }
-
-[build-dependencies]
-bindgen = "0.57.0"
+kime-engine-backend = { git = "https://github.com/Riey/kime", branch = "develop" }
+kime-engine-backend-hangul = { git = "https://github.com/Riey/kime", branch = "develop" }
 
 [dev-dependencies]
 criterion = { version = "0.3.4", features = ["html_reports"] }

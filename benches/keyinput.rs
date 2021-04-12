@@ -7,45 +7,43 @@ macro_rules! cs {
     };
 }
 
-#[derive(Clone, Copy)]
-#[repr(u16)]
-enum KeyCode {
-    A = 38,
-    K = 45,
-    S = 39,
-}
-
-impl KeyCode {
-    pub const fn to_char(self) -> char {
-        match self {
+const fn to_char(key: Key) -> char {
+    if key.state.is_empty() {
+        match key.code {
             KeyCode::A => 'a',
             KeyCode::K => 'k',
             KeyCode::S => 's',
+            _ => ' ',
         }
-    }
-
-    pub const fn to_keycode(self) -> u16 {
-        self as u16
+    } else if key.state.contains(ModifierState::SHIFT) {
+        match key.code {
+            KeyCode::A => 'A',
+            KeyCode::K => 'K',
+            KeyCode::S => 'S',
+            _ => ' ',
+        }
+    } else {
+        ' '
     }
 }
 
 #[derive(Clone, Copy)]
 struct TestKey {
-    code: KeyCode,
+    key: Key,
     #[cfg(features = "check")]
     preedit: &'static str,
 }
 
 impl TestKey {
     #[allow(unused_variables)]
-    pub const fn new(code: KeyCode, preedit: &'static str) -> Self {
+    pub const fn new(key: Key, preedit: &'static str) -> Self {
         #[cfg(features = "check")]
         {
-            Self { code, preedit }
+            Self { key, preedit }
         }
         #[cfg(not(features = "check"))]
         {
-            Self { code }
+            Self { key }
         }
     }
 }
@@ -75,7 +73,7 @@ unsafe fn test_libhangul(hic: *mut HangulInputContext, set: &TestSet) {
     let mut preedit_buf = String::with_capacity(64);
 
     for key in set.keys.iter() {
-        let ch = key.code.to_char();
+        let ch = to_char(key.key);
         let retval = hangul_ic_process(hic, ch as u32 as _);
 
         #[cfg(features = "check")]
@@ -102,12 +100,12 @@ unsafe fn test_libhangul(hic: *mut HangulInputContext, set: &TestSet) {
     }
 }
 
-fn test_kime_engine(engine: &mut InputEngine, config: &Config, set: &TestSet) {
-    engine.set_input_category(InputCategory::Hangul);
+fn test_kime_engine(engine: &mut HangulEngine, config: &HangulData, set: &TestSet) {
+    let mut commit_buf = String::with_capacity(16);
 
     for key in set.keys.iter() {
         #[allow(unused_variables)]
-        let ret = engine.press_key(config, key.code.to_keycode(), 0);
+        let ret = engine.press_key(config, key.key, &mut commit_buf);
 
         #[cfg(features = "check")]
         {
@@ -121,19 +119,19 @@ fn test_kime_engine(engine: &mut InputEngine, config: &Config, set: &TestSet) {
         }
     }
 
-    engine.clear_preedit();
+    engine.clear_preedit(&mut commit_buf);
 
     if cfg!(feature = "check") {
-        assert_eq!(engine.commit_str(), set.commit);
+        assert_eq!(commit_buf, set.commit);
     }
 }
 
 fn get_testset(count: usize) -> TestSet {
     TestSet {
         keys: [
-            TestKey::new(KeyCode::A, "ㅁ"),
-            TestKey::new(KeyCode::K, "마"),
-            TestKey::new(KeyCode::S, "만"),
+            TestKey::new(Key::normal(KeyCode::A), "ㅁ"),
+            TestKey::new(Key::normal(KeyCode::K), "마"),
+            TestKey::new(Key::normal(KeyCode::S), "만"),
         ]
         .repeat(count),
         commit: "만".repeat(count),
@@ -170,31 +168,32 @@ fn libhangul(c: &mut Criterion) {
 }
 
 fn kime_engine(c: &mut Criterion) {
-    let config = Config::default();
+    let config = HangulConfig::default();
+    let data = HangulData::new(&config, builtin_layouts());
 
     c.bench_function("kime_engine_keycode_commit_5", |b| {
         let set = get_testset(5);
-        let mut engine = InputEngine::new(&config);
+        let mut engine = HangulEngine::new(false);
         b.iter(|| {
-            test_kime_engine(&mut engine, &config, &set);
+            test_kime_engine(&mut engine, &data, &set);
             engine.reset();
         });
     });
 
     c.bench_function("kime_engine_keycode_commit_50", |b| {
         let set = get_testset(50);
-        let mut engine = InputEngine::new(&config);
+        let mut engine = HangulEngine::new(false);
         b.iter(|| {
-            test_kime_engine(&mut engine, &config, &set);
+            test_kime_engine(&mut engine, &data, &set);
             engine.reset();
         });
     });
 
     c.bench_function("kime_engine_keycode_commit_500", |b| {
         let set = get_testset(500);
-        let mut engine = InputEngine::new(&config);
+        let mut engine = HangulEngine::new(false);
         b.iter(|| {
-            test_kime_engine(&mut engine, &config, &set);
+            test_kime_engine(&mut engine, &data, &set);
             engine.reset();
         });
     });
